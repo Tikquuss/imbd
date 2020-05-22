@@ -1,6 +1,6 @@
 #### Dependencies
 
-- [Python 3] (https://www.python.org/downloads/)
+- [Python 3](https://www.python.org/downloads/)
 - [NumPy](http://www.numpy.org/)
 - [PyTorch](http://pytorch.org/) 
 - [torchtext](https://pypi.org/project/torchtext/)
