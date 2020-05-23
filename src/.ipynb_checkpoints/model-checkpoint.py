@@ -2,11 +2,12 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn as nn
+import torch.nn.functional as F
 from torchtext import data, datasets
 import spacy
 import time
 import random
- import pickle
+import pickle
 import os
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -66,6 +67,9 @@ class RNN(nn.Module):
         
         return self.fc(hidden.squeeze(0))
     
+    def getID(self):
+        return 'RNN'
+    
 class LSTM(nn.Module):
     def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim, n_layers, bidirectional, dropout, pad_idx):
         
@@ -107,6 +111,9 @@ class LSTM(nn.Module):
         #hidden = [batch size, hid dim * num directions]
             
         return self.fc(hidden)
+    
+    def getID(self):
+        return 'LSTM'
 
 
 class CNN_test(nn.Module):
@@ -150,6 +157,9 @@ class CNN_test(nn.Module):
         #cat = [batch size, n_filters * len(filter_sizes)]
             
         return self.fc(cat)
+   
+    def getID(self):
+        return 'CNN_test'
     
 class CNN(nn.Module):
     def __init__(self, vocab_size, embedding_dim, n_filters, filter_sizes, output_dim,  dropout, pad_idx):
@@ -186,6 +196,9 @@ class CNN(nn.Module):
             
         return self.fc(cat)
     
+    def getID(self):
+        return 'CNN'
+    
 class CNN1d(nn.Module):
     def __init__(self, vocab_size, embedding_dim, n_filters, filter_sizes, output_dim, dropout, pad_idx):
         
@@ -220,6 +233,9 @@ class CNN1d(nn.Module):
         #cat = [batch size, n_filters * len(filter_sizes)]
             
         return self.fc(cat)
+    
+    def getID(self):
+        return 'CNN1d'
     
     
 class BERTGRUSentiment(nn.Module):
@@ -259,6 +275,9 @@ class BERTGRUSentiment(nn.Module):
         #output = [batch size, out dim]
         
         return output
+    
+    def getID(self):
+        return 'BERT'
 
 class Trainer():
     def __init__(self, model, dataset = None, optimizer = None, criterion= None, dump_path = ""):
@@ -267,15 +286,30 @@ class Trainer():
         print(f'The model has {self.count_parameters():,} trainable parameters')
         
         self.dataset = dataset
-        if os.path.isfile(dump_path+'/dataset') :
-            self.dataset = pickle.load(dump_path+'/dataset') 
-        else :
-            pickle.dump(self.dataset, dump_path+'/dataset')
         
         self.optimizer = optimizer if optimizer else optim.Adam(model.parameters(), lr=1e-3)
         self.criterion = criterion if criterion else nn.BCEWithLogitsLoss()
+        
         self.model = self.model.to(device)
         self.criterion = self.criterion.to(device)
+        
+        self.dump_path = dump_path
+        
+    # produces rather large files and generates errors during serialization
+    """
+    def save_dataset(self, dump_path):
+        if not os.path.exists(dump_path):
+            os.makedirs(dump_path)
+        #pickle.dump(self.dataset, dump_path+'/dataset')
+        torch.save(self.dataset, dump_path+'/dataset')
+        self.dump_path = dump_path
+    
+    def load_dataset(self, dump_path):
+        assert os.path.isfile(dump_path+'/dataset'), 'File not found'
+        #self.dataset = pickle.loard(dump_path+'/dataset')
+        self.dataset = torch.loard(dump_path+'/dataset')
+        self.dump_path = dump_path
+    """
         
     def count_parameters(self):
         return sum(p.numel() for p in self.model.parameters() if p.requires_grad)   
@@ -284,7 +318,6 @@ class Trainer():
         """ 
         Returns accuracy per batch, i.e. if you get 8/10 right, this returns 0.8, NOT 8
         """
-        
         #round predictions to the closest integer
         rounded_preds = torch.round(torch.sigmoid(preds))
         correct = (rounded_preds == y).float() #convert into float for division 
@@ -354,12 +387,15 @@ class Trainer():
         elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
         return elapsed_mins, elapsed_secs
     
-    
-    def train(self, N_EPOCHS = 5, dump_path = ""):
+    def train(self, n_epochs = 5, dump_id = ""):
         
+        assert n_epoch > 0
+        
+        dump_id = self.model.getID() if dump_id == "" else dump_id
+              
         best_valid_loss = float('inf')
 
-        for epoch in range(N_EPOCHS):
+        for epoch in range(n_epoch):
 
             start_time = time.time()
 
@@ -372,18 +408,18 @@ class Trainer():
 
             if valid_loss < best_valid_loss:
                 best_valid_loss = valid_loss
-                torch.save(self.model.state_dict(), 'tut1-model.pt')
+                torch.save(self.model.state_dict(), self.dump_path+"/"+dump_id+'-best-model.pth')
 
             print(f'Epoch: {epoch+1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
             print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc*100:.2f}%')
             print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc*100:.2f}%')
                         
     
-    def reload_model(self, dumpfile_path):
-        self.model.load_state_dict(torch.load(dumpfile_path))
+    def reload_model(self, dump_id):
+        dump_id = self.model.getID() if dump_id == "" else dump_id
+        self.model.load_state_dict(torch.load(self.dump_path+"/"+dump_id+'-best-model.pth'))
     
     def test(self): 
-        self.model.load_state_dict(torch.load('tut1-model.pt'))
         test_loss, test_acc = self.evaluate(self.dataset["test_iterator"])
         print(f'Test Loss: {test_loss:.3f} | Test Acc: {test_acc*100:.2f}%')
         
