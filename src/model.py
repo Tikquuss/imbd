@@ -523,6 +523,10 @@ class Trainer():
                                                     random_state = random.seed(seed), 
                                                     split_ratio = split_ratio
                                                 )
+            train_data,_ = train_data.split(
+                                                    random_state = random.seed(seed), 
+                                                    split_ratio = 0.2
+                                                )
             print(f'Number of training examples: {len(train_data)}')
             print(f'Number of validation examples: {len(valid_data)}')
             print(f'Number of testing examples: {len(test_data)}')
@@ -1011,7 +1015,8 @@ class Trainer():
         
         dump_id = self.model.getID() if dump_id == "" else dump_id
               
-        best_valid_loss = float('inf')
+        #best_valid_loss = float('inf')
+        best_valid_acc = 0
 
         # store our model evolution during training
         statistics = {}
@@ -1021,6 +1026,8 @@ class Trainer():
             for j in ["loss", "accuracy"] :
                 statistics[i][j] = []
 
+        flag = False
+
         for epoch in range(max_epochs):
 
             start_time = time.time()
@@ -1028,7 +1035,7 @@ class Trainer():
             train_loss, train_acc = self.train_step(self.dataset["train_iterator"])
             valid_loss, valid_acc = self.evaluate(self.dataset["valid_iterator"])
             
-            statistics["epoch"] = epoch
+            statistics["epoch"].append(epoch)
             statistics['train']["loss"].append(train_loss)
             statistics['train']["accuracy"].append(train_acc)
             statistics['valid']["loss"].append(valid_loss)
@@ -1037,23 +1044,27 @@ class Trainer():
             end_time = time.time()
 
             epoch_mins, epoch_secs = self.epoch_time(start_time, end_time)
+            #if valid_loss < best_valid_loss :
+            if best_valid_acc < valid_acc :
+                #best_valid_loss = valid_loss
+                best_valid_acc = valid_acc
 
-            if valid_loss < best_valid_loss:
-                best_valid_loss = valid_loss
                 # save the best model parameters
                 torch.save(self.model.state_dict(), self.dump_path+"/"+dump_id+'-best-model.pth')
                 no_best_model = 0
+                flag = True
          
             print(f'Epoch: {epoch+1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
             print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc*100:.2f}%')
             print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc*100:.2f}%')
             
-            if best_valid_loss < valid_loss:
+            if flag :
+                print("\tNew best validation score")
+                flag = False
+            else :
                 print("\tNot a better validation score (%i / %i)." % (no_best_model, improving_limit))
                 no_best_model = no_best_model + 1
-            else :
-                print("\tNew best validation score")
-
+                
             if no_best_model == (improving_limit+1) :
                 break
                 
@@ -1065,6 +1076,7 @@ class Trainer():
     def plot_statistics(self, statistics):
         fig, (ax1, ax2) = plt.subplots(2, sharex=True)
         fig.suptitle('')
+
         x = statistics["epoch"]
 
         ax1.plot(x, statistics['train']["loss"], label='train')
@@ -1159,4 +1171,3 @@ class Trainer():
                 return
         
         return predict
-  

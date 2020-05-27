@@ -1,4 +1,4 @@
-In this repository, we will build machine learning models to detect sentiments (i.e. detect whether a sentence is positive or negative) using IMBD ​Large Movie Review Dataset. We will use three types of models for this purpose: recurrent models, convolutional models and models based entirely on the attention mechanism.
+In this repository, we will build machine learning models to detect sentiments (i.e. detect whether a sentence is positive or negative) using IMBD ​Large Movie Review Dataset. We will use three types of models for this purpose: recurrent models, convolutional models and models based entirely on the attention mechanism. See this [notebook](notebook.ipynb) for more details.
 
 ## Dependencies
 
@@ -101,7 +101,7 @@ trainer.compile(
 )
 ```
 
-### 4) Training are model
+### 4) Train the model
 
 ```
 stats = trainer.train(
@@ -117,7 +117,7 @@ stats = trainer.train(
 trainer.plot_statistics(statistics = stats)
 ```
 
-### 6) Test your model
+### 6) Test the model
 
 ```
 trainer.test(dump_id = "")
@@ -127,39 +127,29 @@ trainer.test(dump_id = "")
 
 ```
 predict = trainer.get_predict_sentiment()
+```
+```
 # example negative review...
 print(predict(sentence = "This film is too scary, too much gunfire and blood spilled inside. I can't watch bad movies like this anymore."))
+```
+```
 # example positive review...
 print(predict(sentence = "Among these actors, I prefer the most romantic one, he likes what he does, is positive about chess and knows how to celebrate victories."))
 ```
 
 ## References
 
-### Cross-lingual Language Model Pretraining
+[1] https://paperswithcode.com/task/sentiment-analysis/latest
 
-[1] G. Lample *, A. Conneau * [*Cross-lingual Language Model Pretraining*](https://arxiv.org/abs/1901.07291) and [facebookresearch/XLM](https://github.com/facebookresearch/XLM)
+[2] https://www.kaggle.com/lakshmi25npathi/sentiment-analysis-of-imdb-movie-reviews/comments
 
-```
-@article{lample2019cross,
-  title={Cross-lingual Language Model Pretraining},
-  author={Lample, Guillaume and Conneau, Alexis},
-  journal={Advances in Neural Information Processing Systems (NeurIPS)},
-  year={2019}
-}
-```
+[3] https://github.com/bentrevett/pytorch-sentiment-analysis  
 
-### Model-Agnostic Meta-Learning for Fast Adaptation of Deep Networks
+[4] https://towardsdatascience.com/cnn-sentiment-analysis-9b1771e7cdd6
 
-[2] Chelsea Finn, Pieter Abbeel, Sergey Levine [*Model-Agnostic Meta-Learning for Fast Adaptation of Deep Networks*](https://arxiv.org/abs/1911.02116) and [cbfinn/maml](https://github.com/cbfinn/maml)
+[5] https://towardsdatascience.com/cnn-sentiment-analysis-9b1771e7cdd6
 
-```
-@article{Chelsea et al.,
-  title={Model-Agnostic Meta-Learning for Fast Adaptation of Deep Networks},
-  author={Chelsea Finn, Pieter Abbeel, Sergey Levine},
-  journal={Proceedings of the 34th International Conference on Machine Learning, Sydney, Australia, PMLR 70, 2017},
-  year={2017}
-}
-```
+[6] https://captum.ai/tutorials/IMDB_TorchText_Interpret
 
 ## License
 See the [LICENSE](LICENSE) file for more details.
