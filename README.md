@@ -20,52 +20,54 @@ In this repository, we will build machine learning models to detect sentiments (
 from src.model import RNN, LSTM, CNN, CNN1d, BERTGRUSentiment, Trainer
 ```
 ```
-api = any positive integer
+api means `any positive integer`
 ```
 ```
 rnn_model = RNN(
-        	input_dim = api, dimension of the one-hot vectors, which is equal to the vocabulary size, will be update to len(dataset["TEXT"].vocab) during compilation
-        	embedding_dim = 100, # size of the dense word vectors
-        	hidden_dim = 256, # size of the hidden states
-        	output_dim = 1 # usually the number of classes, however in the case of only 2 classes the output value is between 0 and 1 and thus can be 1-dimensional, i.e. a single scalar real number.
+    input_dim = api, dimension of the one-hot vectors, which is equal to the vocabulary size, will be update to len(dataset["TEXT"].vocab) during compilation
+    embedding_dim = 100, # size of the dense word vectors
+    hidden_dim = 256, # size of the hidden states
+    output_dim = 1 # usually the number of classes, however in the case of only 2 classes the output value is between 0 and 1 and thus can be 1-dimensional, i.e. a single scalar real number.
 )
 ```
 
 ```
 lstm_model = LSTM(
-        vocab_size = api, # vocabulary size, will be update to len(dataset["TEXT"].vocab) during compilation
-        embedding_dim = 100, # size of the dense word vectors
-        hidden_dim = 256, # size of the hidden states
-        output_dim = 1, # usually the number of classes, however in the case of only 2 classes the output value is between 0 and 1 and thus can be 1-dimensional, i.e. a single scalar real number.
-        n_layers = 2, # number of layers
-        bidirectional = True, # bidirectional or not
-        dropout = 0.5, # we use a method of regularization called dropout. Dropout works by randomly dropping out (setting to 0) neurons in a layer during a forward pass.
-        pad_idx = api # index of <pad> token in th vocabulary, will be update to dataset["TEXT"].vocab.stoi[dataset["TEXT"].pad_token] during compilation
-),
+    vocab_size = api, # vocabulary size, will be update to len(dataset["TEXT"].vocab) during compilation
+    embedding_dim = 100, # size of the dense word vectors
+    hidden_dim = 256, # size of the hidden states
+    output_dim = 1, # usually the number of classes, however in the case of only 2 classes the output value is between 0 and 1 and thus can be 1-dimensional, i.e. a single scalar real number.
+    n_layers = 2, # number of layers
+    bidirectional = True, # bidirectional or not
+    dropout = 0.5, # we use a method of regularization called dropout. Dropout works by randomly dropping out (setting to 0) neurons in a layer during a forward pass.
+    pad_idx = api # index of <pad> token in th vocabulary, will be update to dataset["TEXT"].vocab.stoi[dataset["TEXT"].pad_token] during compilation
+)
 ```
 
 ```
 # CNN1d if we want to run the 1-dimensional convolutional model, noting that both models give almost identical results.
 
 cnn_model = CNN( 
-        vocab_size = api, # vocabulary size, will be update during compilation to len(TEXT.vocab) during compilation
-        embedding_dim = 100, # size of the dense word vectors
-        n_filters = 100, # number of filters
-        filter_sizes = [3,4,5], # size of the filters or kernel, is going to be [n x emb_dim] where n is the size of the n-grams.
-        output_dim = 1, # usually the number of classes, however in the case of only 2 classes the output value is between 0 and 1 and thus can be 1-dimensional, i.e. a single scalar real number.
-        dropout = 0.5, # we use a method of regularization called dropout. Dropout works by randomly dropping out (setting to 0) neurons in a layer during a forward pass.
-        pad_idx = api # index of <pad> token in th vocabulary, will be update during compilation to TEXT.vocab.stoi[TEXT.pad_token]
+    vocab_size = api, # vocabulary size, will be update during compilation to len(TEXT.vocab) during compilation
+    embedding_dim = 100, # size of the dense word vectors
+    n_filters = 100, # number of filters
+    filter_sizes = [3,4,5], # size of the filters or kernel, is going to be [n x emb_dim] where n is the size of the n-grams.
+    output_dim = 1, # usually the number of classes, however in the case of only 2 classes the output value is between 0 and 1 and thus can be 1-dimensional, i.e. a single scalar real number.
+    dropout = 0.5, # we use a method of regularization called dropout. Dropout works by randomly dropping out (setting to 0) neurons in a layer during a forward pass.
+    pad_idx = api # index of <pad> token in th vocabulary, will be update during compilation to TEXT.vocab.stoi[TEXT.pad_token]
 )
 ```
 
 ```
+from transformers import BertModel
+
 bert_model = BERTGRUSentiment(
-        bert = BertModel.from_pretrained('bert-base-uncased'), # load the pre-trained model, making sure to load the same model as we will do for the tokenizer.
-        hidden_dim = 256, # size of the hidden states
-        output_dim = 1, # usually the number of classes, however in the case of only 2 classes the output value is between 0 and 1 and thus can be 1-dimensional, i.e. a single scalar real number.
-        n_layers = 2, # number of layers
-        bidirectional = True, # bidirectional or not
-        dropout = 0.25 # we use a method of regularization called dropout. Dropout works by randomly dropping out (setting to 0) neurons in a layer during a forward pass.
+    bert = BertModel.from_pretrained('bert-base-uncased'), # load the pre-trained model, making sure to load the same model as we will do for the tokenizer.
+    hidden_dim = 256, # size of the hidden states
+    output_dim = 1, # usually the number of classes, however in the case of only 2 classes the output value is between 0 and 1 and thus can be 1-dimensional, i.e. a single scalar real number.
+    n_layers = 2, # number of layers
+    bidirectional = True, # bidirectional or not
+    dropout = 0.25 # we use a method of regularization called dropout. Dropout works by randomly dropping out (setting to 0) neurons in a layer during a forward pass.
 )
 ```
 
@@ -83,8 +85,7 @@ trainer = Trainer(
 - optimizer (torch.optim, default = Adam) : model optimizer (use to update the model parameters)
 - criterion (function, default = nn.BCEWithLogitsLoss) : loss function 
 - seed (int, default = 1234) : random seeds for reproducibility
-- split_ratio (float between 0 and 1, default = 0.8) : ratio of training data to use for training, 
-                                                       the rest for validation
+- split_ratio (float between 0 and 1, default = 0.8) : ratio of training data to use for training, the rest for validation
 - batch_size (int, default = 64) : number of examples per batch
 - max_vocab_size (int, default = 25000) : maximun token in the vocabulary
 
