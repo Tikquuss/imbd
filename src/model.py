@@ -1099,7 +1099,7 @@ class Trainer():
         all examples in the training and validation sets.
         
         max_epochs (int, default = 10 ) : maximun number of epochs
-        improving_limit (int, default = 5 ) : If the precision of the model does not 
+        improving_limit (int, default = 5 ) : If the `eval_metric` of the model does not 
                                               improve during `improving_limit` epoch, we 
                                               stop training and keep the best model.
         eval_metric (string, default = '' ) : evaluation metric
