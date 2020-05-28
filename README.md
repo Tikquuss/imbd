@@ -11,6 +11,9 @@ In this repository, we will build machine learning models to detect sentiments (
 
 ##  Pretrained models
 
+```
+
+```
 
 ## Train your one models
 
@@ -85,17 +88,21 @@ trainer = Trainer(
 - optimizer (torch.optim, default = Adam) : model optimizer (use to update the model parameters)
 - criterion (function, default = nn.BCEWithLogitsLoss) : loss function 
 - seed (int, default = 1234) : random seeds for reproducibility
+- train_n_samples (int, defaulf = 25000) : number of training examples to consider (0 < train_n_samples <= 25000)
 - split_ratio (float between 0 and 1, default = 0.8) : ratio of training data to use for training, the rest for validation
+- test_n_samples (int, defaulf = 25000) : number of test examples to consider (0 < test_n_samples <= 25000)
 - batch_size (int, default = 64) : number of examples per batch
 - max_vocab_size (int, default = 25000) : maximun token in the vocabulary
 
 ```
 # load the data, build the optimizer and the loss function, and update the model parameters if necessary.
 trainer.compile(
-    optimizer = "SGD", # or Adam
-    criterion = "BCEWithLogitsLoss", 
+    optimizer = "Adam", # or SGD
+    criterion = "BCEWithLogitsLoss",
+    train_n_samples = 25000,
     seed = 1234, 
     split_ratio = 0.8, 
+    test_n_samples  = 25000,
     batch_size = 4, 
     max_vocab_size = 25000 
 )
@@ -107,6 +114,7 @@ trainer.compile(
 stats = trainer.train(
     max_epochs = 50, # maximun number of epochs
     improving_limit = 2, # If the precision of the model does not improve during `improving_limit` epoch, we stop training and keep the best model.
+    eval_metric = "accuracy_score", # evaluation metric : 'loss', 'binary_accuracy', 'accuracy_score', 'precision', 'recall', 'f1-score'
     dump_id = "" # identifier to distinguish models in the serialization folder, is by default equal to the name of the base model
 )
 ```
@@ -114,13 +122,13 @@ stats = trainer.train(
 ### 5) Display statics from training and validation: evolution of loss and accuracy.
 
 ```
-trainer.plot_statistics(statistics = stats)
+trainer.plot_statistics(statistics = stats, figsize=(20,3))
 ```
 
 ### 6) Test the model
 
 ```
-trainer.test(dump_id = "")
+y, y_pred = trainer.test(dump_id = "")
 ```
 
 ### 7) Putting the model into production

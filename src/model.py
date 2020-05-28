@@ -1,3 +1,9 @@
+# Copyright (c) 2020-present, pascalnotsawo@gmail.com.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -11,6 +17,8 @@ import pickle
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+import itertools
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 nlp = spacy.load('en')
@@ -374,19 +382,40 @@ class Trainer():
             os.makedirs(dump_path)
         self.dump_path = dump_path
         
-    def compile(self, optimizer = "Adam", criterion = "BCEWithLogitsLoss", seed = 1234, split_ratio = 0.8 ,batch_size = 64, max_vocab_size = 25000):
+    def compile(self, 
+        optimizer = "Adam", 
+        criterion = "BCEWithLogitsLoss", 
+        seed = 1234, 
+        train_n_samples = 25000, 
+        split_ratio = 0.8, 
+        test_n_samples = 25000,
+        batch_size = 64, 
+        max_vocab_size = 25000
+    ):
         """
         load the data, build the optimizer and the loss function, and update the model parameters if necessary.
         optimizer (torch.optim, default = Adam) : model optimizer (use to update the model parameters)
         criterion (function, default = nn.BCEWithLogitsLoss) : loss function 
         seed (int, default = 1234) : random seeds for reproducibility
+        train_n_samples (int, default = 25000) : number of training examples to consider
         split_ratio (float between 0 and 1, default = 0.8) : ratio of training data to use for training, 
                                                              the rest for validation
+        test_n_samples (int, default = 25000) : number of test examples to consider
         batch_size (int, default = 64) : number of examples per batch
         max_vocab_size (int, default = 25000) : maximun token in the vocabulary
         """
         assert optimizer in ["SGD", "Adam"], "optimizer type not supported"
         assert criterion in ["BCEWithLogitsLoss"], "criterion type not supported"
+        assert train_n_samples > 0
+        assert test_n_samples > 0
+
+        if train_n_samples > 25000 :
+            train_n_samples = 25000
+        train_ratio = train_n_samples/25000
+
+        if test_n_samples > 25000 :
+            test_n_samples = 25000
+        test_ratio = test_n_samples/25000
         
         """
         Instead of writing a parameterizable function to process the data, we preferred to detail 
@@ -412,7 +441,16 @@ class Trainer():
             or negative review.
             """
             train_data, test_data = datasets.IMDB.splits(TEXT, LABEL)
-                      
+            if 1 > test_ratio :   
+                test_data,_ = test_data.split(
+                                                random_state = random.seed(seed), 
+                                                split_ratio = test_ratio
+                                            ) 
+            if 1 > train_ratio :
+                train_data,_ = train_data.split(
+                                                random_state = random.seed(seed), 
+                                                split_ratio = train_ratio
+                                            )   
             """
             The IMDb dataset only has train/test splits, so we need to create a validation set. 
             We can do this with the `.split()` method. By default this splits 70/30, however by 
@@ -425,7 +463,6 @@ class Trainer():
                                                     random_state = random.seed(seed), 
                                                     split_ratio = split_ratio
                                                 )
-            
             # We can see how many examples are in each split by checking their length.
             print(f'Number of training examples: {len(train_data)}')
             print(f'Number of validation examples: {len(valid_data)}')
@@ -508,7 +545,7 @@ class Trainer():
 
             We'll be using packed padded sequences, which will make our LSTM only process the 
             non-padded elements of our sequence, and for any padded element the output will be a 
-            zero tensor. To use packed padded sequences, we have to tell the RNN how long the 
+            zero tensor. To use packed padded sequences, we have to tell the LSTM how long the 
             actual sequences are. We do this by setting `include_lengths = True` for our TEXT 
             field. This will cause batch.text to now be a tuple with the first element being 
             our sentence (a numericalized tensor that has been padded) and the second element 
@@ -519,13 +556,19 @@ class Trainer():
             
             # We then load the IMDb dataset.
             train_data, test_data = datasets.IMDB.splits(TEXT, LABEL)
+            if 1 > test_ratio :   
+                test_data,_ = test_data.split(
+                                                random_state = random.seed(seed), 
+                                                split_ratio = test_ratio
+                                            )
+            if 1 > train_ratio :
+                train_data,_ = train_data.split(
+                                                random_state = random.seed(seed), 
+                                                split_ratio = train_ratio
+                                            )
             train_data, valid_data = train_data.split(
                                                     random_state = random.seed(seed), 
                                                     split_ratio = split_ratio
-                                                )
-            train_data,_ = train_data.split(
-                                                    random_state = random.seed(seed), 
-                                                    split_ratio = 0.2
                                                 )
             print(f'Number of training examples: {len(train_data)}')
             print(f'Number of validation examples: {len(valid_data)}')
@@ -636,6 +679,16 @@ class Trainer():
             LABEL = data.LabelField(dtype = torch.float)
 
             train_data, test_data = datasets.IMDB.splits(TEXT, LABEL)
+            if 1 > test_ratio :   
+                test_data,_ = test_data.split(
+                                                random_state = random.seed(seed), 
+                                                split_ratio = test_ratio
+                                            )
+            if 1 > train_ratio :
+                train_data,_ = train_data.split(
+                                                random_state = random.seed(seed), 
+                                                split_ratio = train_ratio
+                                            )
             train_data, valid_data = train_data.split(
                                                     random_state = random.seed(seed), 
                                                     split_ratio = split_ratio
@@ -753,6 +806,11 @@ class Trainer():
             eos_token_idx = tokenizer.sep_token_id
             pad_token_idx = tokenizer.pad_token_id
             unk_token_idx = tokenizer.unk_token_id
+
+            self.init_token_idx = init_token_idx
+            self.eos_token_idx = eos_token_idx
+            self.pad_token_idx = pad_token_idx
+            self.unk_token_idx = unk_token_idx 
             
             """
             Now we define our fields. The transformer expects the batch dimension to be first, 
@@ -781,6 +839,16 @@ class Trainer():
             
             # We load the data and create the validation splits as before.
             train_data, test_data = datasets.IMDB.splits(TEXT, LABEL)
+            if 1 > test_ratio :   
+                test_data,_ = test_data.split(
+                                                random_state = random.seed(seed), 
+                                                split_ratio = test_ratio
+                                            )
+            if 1 > train_ratio :
+                train_data,_ = train_data.split(
+                                                random_state = random.seed(seed), 
+                                                split_ratio = train_ratio
+                                            )
             train_data, valid_data = train_data.split(
                                                     random_state = random.seed(seed), 
                                                     split_ratio = split_ratio
@@ -878,6 +946,10 @@ class Trainer():
         epoch_loss = 0
         epoch_acc = 0
 
+        # to compute classification report
+        y = []
+        y_pred = []
+
         #To ensure the dropout is "turned on" while training
         self.model.train()
 
@@ -918,12 +990,24 @@ class Trainer():
 
             epoch_loss += loss.item()
             epoch_acc += acc.item()
+
+            y.append(batch.label)
+            y_pred.append(torch.round(torch.sigmoid(predictions)))
+                
          
+        # flatten
+        y = list(itertools.chain.from_iterable(y))
+        y_pred = list(itertools.chain.from_iterable(y_pred))
+
+        # convert tensor to integer
+        y = [int(y_i) for y_i in y]
+        y_pred = [int(y_i) for y_i in y_pred]
+
         """
         Finally, we return the loss and accuracy, averaged across the epoch. 
         The len of an iterator is the number of batches in the iterator.
         """
-        return epoch_loss / len(iterator), epoch_acc / len(iterator)
+        return epoch_loss / len(iterator), epoch_acc / len(iterator), y, y_pred
     
     def evaluate(self, iterator):
         """
@@ -941,6 +1025,10 @@ class Trainer():
         "turned off" while evaluating.
         """
         self.model.eval()
+
+        # to compute classification report
+        y = []
+        y_pred = []
 
         """
         No gradients are calculated on PyTorch operations inside the `with no_grad()` block. 
@@ -973,14 +1061,25 @@ class Trainer():
                 loss = self.criterion(predictions, batch.label)
                 acc = self.binary_accuracy(predictions, batch.label)
 
+                y.append(batch.label)
+                y_pred.append(torch.round(torch.sigmoid(predictions)))
+
                 epoch_loss += loss.item()
                 epoch_acc += acc.item()
+
+        # flatten
+        y = list(itertools.chain.from_iterable(y))
+        y_pred = list(itertools.chain.from_iterable(y_pred))
+
+        # convert tensor to integer
+        y = [int(y_i) for y_i in y]
+        y_pred = [int(y_i) for y_i in y_pred]
 
         """
         Finally, we return the loss and accuracy, averaged across the epoch. 
         The len of an iterator is the number of batches in the iterator.
         """
-        return epoch_loss / len(iterator), epoch_acc / len(iterator)
+        return epoch_loss / len(iterator), epoch_acc / len(iterator), y, y_pred
     
     def epoch_time(self, start_time, end_time):
         """
@@ -993,37 +1092,56 @@ class Trainer():
         elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
         return elapsed_mins, elapsed_secs
     
-    def train(self, max_epochs = 100, improving_limit = 5, dump_id = ""):
+    
+    def train(self, max_epochs = 10, improving_limit = 5, eval_metric='loss', dump_id = ""):
         """
         We then train the model through multiple epochs, an epoch being a complete pass through 
         all examples in the training and validation sets.
         
-        max_epochs : maximun number of epochs
-        improving_limit : If the precision of the model does not improve during `improving_limit` 
-                          epoch, we stop training and keep the best model.
+        max_epochs (int, default = 10 ) : maximun number of epochs
+        improving_limit (int, default = 5 ) : If the precision of the model does not 
+                                              improve during `improving_limit` epoch, we 
+                                              stop training and keep the best model.
+        eval_metric (string, default = '' ) : evaluation metric
         dump_id : identifier to distinguish models in the serialization folder, 
-                 is by default equal to the name of the base model.
+                  is by default equal to the name of the base model.
     
         At each epoch, if the validation loss is the best we have seen so far, we'll save the 
         parameters of the model and then after training has finished we'll use that model on the test set.
         """
 
         assert max_epochs > 0
-        assert improving_limit > 0
+        assert improving_limit >= 0
+        assert eval_metric in ['loss', 'binary_accuracy', 'accuracy_score', 'precision', 'recall', 'f1-score']
+
+        def isSatisfy(best_metric, current_metric):
+            """check if current metric if best like last one"""
+            if eval_metric == "loss" :
+                return best_metric > current_metric
+            else :
+                return best_metric < current_metric
+
+        if eval_metric == "loss" :
+            best_valid_metric = float('inf')
+        else :
+            best_valid_metric = 0
         
+        if eval_metric == "accuracy_score":
+            key = "accuracy"
+        else :
+            # loss, binary_accuracy, macro avg : precision, recall, f1-score
+            key = eval_metric
+            
         no_best_model = 0
         
         dump_id = self.model.getID() if dump_id == "" else dump_id
-              
-        #best_valid_loss = float('inf')
-        best_valid_acc = 0
-
+        
         # store our model evolution during training
         statistics = {}
         statistics["epoch"] = []
         for i in ["train", "valid"] :
             statistics[i] = {}
-            for j in ["loss", "accuracy"] :
+            for j in ["loss", "binary_accuracy", "accuracy_score", "precision", "recall", "f1-score"] :
                 statistics[i][j] = []
 
         flag = False
@@ -1032,22 +1150,44 @@ class Trainer():
 
             start_time = time.time()
 
-            train_loss, train_acc = self.train_step(self.dataset["train_iterator"])
-            valid_loss, valid_acc = self.evaluate(self.dataset["valid_iterator"])
+            train_loss, train_acc, train_y, train_y_pred = self.train_step(self.dataset["train_iterator"])
+            valid_loss, valid_acc, valid_y, valid_y_pred = self.evaluate(self.dataset["valid_iterator"])
             
+            train_score = accuracy_score(train_y, train_y_pred)
+            valid_score = accuracy_score(valid_y, valid_y_pred)
+
             statistics["epoch"].append(epoch)
             statistics['train']["loss"].append(train_loss)
-            statistics['train']["accuracy"].append(train_acc)
+            statistics['train']["binary_accuracy"].append(train_acc)
+            statistics['train']["accuracy_score"].append(train_score)
             statistics['valid']["loss"].append(valid_loss)
-            statistics['valid']["accuracy"].append(valid_acc)
+            statistics['valid']["binary_accuracy"].append(valid_acc)
+            statistics['valid']["accuracy_score"].append(valid_score)
 
             end_time = time.time()
 
             epoch_mins, epoch_secs = self.epoch_time(start_time, end_time)
-            #if valid_loss < best_valid_loss :
-            if best_valid_acc < valid_acc :
-                #best_valid_loss = valid_loss
-                best_valid_acc = valid_acc
+
+            train_cr = classification_report(train_y, train_y_pred, labels=[0,1], output_dict = True)
+            statistics['train']["precision"].append(train_cr['macro avg']['precision'])
+            statistics['train']["recall"].append(train_cr['macro avg']['recall'])
+            statistics['train']["f1-score"].append(train_cr['macro avg']['f1-score'])
+
+            valid_cr = classification_report(valid_y, valid_y_pred, labels=[0,1], output_dict = True)
+            valid_cr['loss']            = valid_loss
+            valid_cr['binary_accuracy'] = valid_acc
+            valid_cr['accuracy']        = valid_cr['accuracy']
+            valid_cr['precision']       = valid_cr['macro avg']['precision']
+            valid_cr['recall']          = valid_cr['macro avg']['recall']
+            valid_cr['f1-score']        = valid_cr['macro avg']['f1-score'] 
+
+            statistics['valid']["precision"].append(valid_cr['precision'])
+            statistics['valid']["recall"].append(valid_cr['recall'])
+            statistics['valid']["f1-score"].append(valid_cr['f1-score'])
+
+            if isSatisfy(best_metric = best_valid_metric, current_metric = valid_cr[key]) :
+                
+                best_valid_metric = valid_cr[key]
 
                 # save the best model parameters
                 torch.save(self.model.state_dict(), self.dump_path+"/"+dump_id+'-best-model.pth')
@@ -1055,14 +1195,20 @@ class Trainer():
                 flag = True
          
             print(f'Epoch: {epoch+1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
-            print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc*100:.2f}%')
-            print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc*100:.2f}%')
+            print(f"\tTrain Loss: {train_loss:.4f} | Train binary Acc: {train_acc*100:.3f}% | Train score Acc: {train_score*100:.3f}% | "
+                +f"Train precision: {train_cr['macro avg']['precision']*100:.3f}% | "
+                +f"Train recall: {train_cr['macro avg']['recall']*100:.3f}% | "
+                +f"Train f1-score: {train_cr['macro avg']['f1-score']*100:.3f}%")
+            print(f"\t Val. Loss: {valid_loss:.4f} |  Val. binary Acc: {valid_acc*100:.3f}% | Val. score Acc: {valid_score*100:.3f}% | "
+                +f"Val. precision: {valid_cr['macro avg']['precision']*100:.3f}% | "
+                +f"Val. recall: {valid_cr['macro avg']['recall']*100:.3f}% | "
+                +f"Val. f1-score: {valid_cr['macro avg']['f1-score']*100:.3f}%")
             
             if flag :
-                print("\tNew best validation score")
+                print("\t====== New best validation score : "+str(best_valid_metric)+"\n")
                 flag = False
             else :
-                print("\tNot a better validation score (%i / %i)." % (no_best_model, improving_limit))
+                print("\t====== Not a better validation score (%i / %i).\n" % (no_best_model, improving_limit))
                 no_best_model = no_best_model + 1
                 
             if no_best_model == (improving_limit+1) :
@@ -1073,11 +1219,15 @@ class Trainer():
 
         return statistics       
                 
-    def plot_statistics(self, statistics):
-        fig, (ax1, ax2) = plt.subplots(2, sharex=True)
-        fig.suptitle('')
-
+    def plot_statistics(self, statistics, figsize=(15,3)):
+        """
+        https://matplotlib.org/3.1.0/gallery/subplots_axes_and_figures/subplots_demo.html
+        https://stackoverflow.com/questions/14770735/how-do-i-change-the-figure-size-with-subplots
+        """
         x = statistics["epoch"]
+
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, sharex=True, figsize = figsize)
+        fig.suptitle('')
 
         ax1.plot(x, statistics['train']["loss"], label='train')
         ax1.plot(x, statistics['valid']["loss"], label='valid')
@@ -1086,21 +1236,74 @@ class Trainer():
         ax1.legend()
         ax1.label_outer() # Hide x labels and tick labels for top plots and y ticks for right plots.
 
-        ax2.plot(x, statistics['train']["accuracy"], label='train')
-        ax2.plot(x, statistics['valid']["accuracy"], label='valid')
+        ax2.plot(x, statistics['train']["binary_accuracy"], label='train')
+        ax2.plot(x, statistics['valid']["binary_accuracy"], label='valid')
         ax2.set(xlabel='epoch', ylabel='accuracy')
-        ax2.set_title('accuracy per epoch')
+        ax2.set_title('binary accuracy per epoch')
         ax2.legend()
         ax2.label_outer() # Hide x labels and tick labels for top plots and y ticks for right plots.
+
+        ax3.plot(x, statistics['train']["accuracy_score"], label='train')
+        ax3.plot(x, statistics['valid']["accuracy_score"], label='valid')
+        ax3.set(xlabel='epoch', ylabel='accuracy')
+        ax3.set_title('accuracy_score per epoch')
+        ax3.legend()
+        ax3.label_outer() # Hide x labels and tick labels for top plots and y ticks for right plots.
+
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, sharex=True, figsize = figsize)
+        fig.suptitle('')
+
+        ax1.plot(x, statistics['train']["precision"], label='train')
+        ax1.plot(x, statistics['valid']["precision"], label='valid')
+        ax1.set(xlabel='epoch', ylabel='precision')
+        ax1.set_title('precision per epoch')
+        ax1.legend()
+        ax1.label_outer() # Hide x labels and tick labels for top plots and y ticks for right plots.
+
+        ax2.plot(x, statistics['train']["recall"], label='train')
+        ax2.plot(x, statistics['valid']["recall"], label='valid')
+        ax2.set(xlabel='epoch', ylabel='accuracy')
+        ax2.set_title('recall per epoch')
+        ax2.legend()
+        ax2.label_outer() # Hide x labels and tick labels for top plots and y ticks for right plots.
+
+        ax3.plot(x, statistics['train']["f1-score"], label='train')
+        ax3.plot(x, statistics['valid']["f1-score"], label='valid')
+        ax3.set(xlabel='epoch', ylabel='accuracy')
+        ax3.set_title('f1-score per epoch')
+        ax3.legend()
+        ax3.label_outer() # Hide x labels and tick labels for top plots and y ticks for right plots.
         
+
     def test(self, dump_id = ""): 
         """
         The the model : plot the test loss and accuracy
         """
         dump_id = self.model.getID() if dump_id == "" else dump_id
         self.model.load_state_dict(torch.load(self.dump_path+"/"+dump_id+'-best-model.pth')) 
-        test_loss, test_acc = self.evaluate(self.dataset["test_iterator"])
-        print(f'Test Loss: {test_loss:.3f} | Test Acc: {test_acc*100:.2f}%')
+        
+        test_loss, test_acc, y, y_pred = self.evaluate(self.dataset["test_iterator"])
+        test_score = accuracy_score(y, y_pred)
+        cr = classification_report(y, y_pred, labels=[0,1], output_dict = True)
+
+        print(f"Test Loss: {test_loss:.4f} | Test binary Acc: {test_acc*100:.3f}% | Test score Acc: {test_score*100:.3f}% | "
+            +f"Test precision: {cr['macro avg']['precision']*100:.3f}% | "
+            +f"Test recall: {cr['macro avg']['recall']*100:.3f}% | "
+            +f"f1-score: {cr['macro avg']['f1-score']*100:.3f}%")
+        print()
+
+        cm = confusion_matrix(y, y_pred)
+        print("confusion_matrix --> [ ", cm[0], ", ", cm[1] ," ]")
+        print()
+
+        print("classification report : ")
+        print("\tnegative(0) --> ", cr["0"])
+        print("\tpositive(1) --> ", cr["1"])
+        print("\taccuracy    --> ", cr["accuracy"])
+        print("\tmacro avg   --> ", cr["macro avg"])
+        print("\tweighted avg--> ", cr["weighted avg"])
+        
+        return y, y_pred
         
     def get_predict_sentiment(self) :
         """
@@ -1160,7 +1363,7 @@ class Trainer():
                 tokenizer = tokenizer if tokenizer else self.tokenizer
                 tokens = tokenizer.tokenize(sentence)
                 tokens = tokens[:self.max_input_length-2]
-                indexed = [init_token_idx] + tokenizer.convert_tokens_to_ids(tokens) + [eos_token_idx]
+                indexed = [self.init_token_idx] + tokenizer.convert_tokens_to_ids(tokens) + [self.eos_token_idx]
                 tensor = torch.LongTensor(indexed).to(device)
                 tensor = tensor.unsqueeze(0)
                 prediction = torch.sigmoid(self.model(tensor))
