@@ -443,12 +443,12 @@ class Trainer():
             train_data, test_data = datasets.IMDB.splits(TEXT, LABEL)
             if 1 > test_ratio :   
                 test_data,_ = test_data.split(
-                                                random_state = random.seed(seed), 
+                                                random_state = seed, 
                                                 split_ratio = test_ratio
                                             ) 
             if 1 > train_ratio :
                 train_data,_ = train_data.split(
-                                                random_state = random.seed(seed), 
+                                                random_state = seed, 
                                                 split_ratio = train_ratio
                                             )   
             """
@@ -460,7 +460,7 @@ class Trainer():
             ensuring that we get the same train/validation split each time.
             """
             train_data, valid_data = train_data.split(
-                                                    random_state = random.seed(seed), 
+                                                    random_state = seed, 
                                                     split_ratio = split_ratio
                                                 )
             # We can see how many examples are in each split by checking their length.
@@ -558,16 +558,16 @@ class Trainer():
             train_data, test_data = datasets.IMDB.splits(TEXT, LABEL)
             if 1 > test_ratio :   
                 test_data,_ = test_data.split(
-                                                random_state = random.seed(seed), 
+                                                random_state = seed, 
                                                 split_ratio = test_ratio
                                             )
             if 1 > train_ratio :
                 train_data,_ = train_data.split(
-                                                random_state = random.seed(seed), 
+                                                random_state = seed, 
                                                 split_ratio = train_ratio
                                             )
             train_data, valid_data = train_data.split(
-                                                    random_state = random.seed(seed), 
+                                                    random_state = seed, 
                                                     split_ratio = split_ratio
                                                 )
             print(f'Number of training examples: {len(train_data)}')
@@ -681,16 +681,16 @@ class Trainer():
             train_data, test_data = datasets.IMDB.splits(TEXT, LABEL)
             if 1 > test_ratio :   
                 test_data,_ = test_data.split(
-                                                random_state = random.seed(seed), 
+                                                random_state = seed, 
                                                 split_ratio = test_ratio
                                             )
             if 1 > train_ratio :
                 train_data,_ = train_data.split(
-                                                random_state = random.seed(seed), 
+                                                random_state = seed, 
                                                 split_ratio = train_ratio
                                             )
             train_data, valid_data = train_data.split(
-                                                    random_state = random.seed(seed), 
+                                                    random_state = seed, 
                                                     split_ratio = split_ratio
                                                 )
             print(f'Number of training examples: {len(train_data)}')
@@ -841,16 +841,16 @@ class Trainer():
             train_data, test_data = datasets.IMDB.splits(TEXT, LABEL)
             if 1 > test_ratio :   
                 test_data,_ = test_data.split(
-                                                random_state = random.seed(seed), 
+                                                random_state = seed, 
                                                 split_ratio = test_ratio
                                             )
             if 1 > train_ratio :
                 train_data,_ = train_data.split(
-                                                random_state = random.seed(seed), 
+                                                random_state = seed, 
                                                 split_ratio = train_ratio
                                             )
             train_data, valid_data = train_data.split(
-                                                    random_state = random.seed(seed), 
+                                                    random_state = seed, 
                                                     split_ratio = split_ratio
                                                 )
             print(f"Number of training examples: {len(train_data)}")
