@@ -614,7 +614,24 @@ class Trainer():
             self.dataset = {"TEXT" : TEXT, "LABEL" : LABEL,
                             "train_data" : train_data, "valid_data" : valid_data, "test_data" : test_data,
                             "train_iterator" : train_iterator, "valid_iterator" : valid_iterator, "test_iterator" : test_iterator}
-                        
+            
+            """
+            We now update the input dimention of the LSTM model : the input dimension is the 
+            dimension of the one-hot vectors, which is equal to the vocabulary size.
+            The pad index comes from vocabulary
+            """
+            self.model = LSTM(
+                vocab_size = len(self.dataset["TEXT"].vocab), 
+                embedding_dim = self.model.embedding_dim, 
+                hidden_dim = self.model.hidden_dim, 
+                output_dim = self.model.output_dim, 
+                n_layers = self.model.n_layers, 
+                bidirectional = self.model.bidirectional, 
+                dropout = self.model.dropout_percent, 
+                pad_idx = self.dataset["TEXT"].vocab.stoi[self.dataset["TEXT"].pad_token] 
+            )
+            
+            
             """
             The final addition is copying the pre-trained word embeddings we loaded earlier into the 
             embedding layer of our model. We retrieve the embeddings from the field's vocab, and 
@@ -643,23 +660,6 @@ class Trainer():
             self.model.embedding.weight.data[UNK_IDX] = torch.zeros(self.model.embedding_dim)
             self.model.embedding.weight.data[self.model.pad_idx] = torch.zeros(self.model.embedding_dim)
                
-            """
-            We now update the input dimention of the LSTM model : the input dimension is the 
-            dimension of the one-hot vectors, which is equal to the vocabulary size.
-            The pad index comes from vocabulary
-            """
-            self.model = LSTM(
-                vocab_size = len(self.dataset["TEXT"].vocab), 
-                embedding_dim = self.model.embedding_dim, 
-                hidden_dim = self.model.hidden_dim, 
-                output_dim = self.model.output_dim, 
-                n_layers = self.model.n_layers, 
-                bidirectional = self.model.bidirectional, 
-                dropout = self.model.dropout_percent, 
-                pad_idx = self.dataset["TEXT"].vocab.stoi[self.dataset["TEXT"].pad_token] 
-            )
-
-            
         ## CNN/CNN1d
         elif isinstance(self.model, CNN) or isinstance(self.model, CNN1d) :
             
